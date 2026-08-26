@@ -34,7 +34,7 @@ async function iniciar() {
   if (!yaVinculado) {
     console.clear();
     const numero = await preguntar(
-      "No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): "
+      "\x1b[36mNo hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): \x1b[0m"
     );
     const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
     logger.info(`Tu código de vinculación es: ${codigo}`);
