@@ -1,7 +1,14 @@
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 
-const db = new Database(path.join(process.cwd(), "bot.db"));
+const carpetaDatos = path.join(process.cwd(), "datos");
+
+if (!fs.existsSync(carpetaDatos)) {
+  fs.mkdirSync(carpetaDatos);
+}
+
+const db = new Database(path.join(carpetaDatos, "bot.db"));
 
 db.pragma("journal_mode = WAL");
 db.pragma("synchronous = NORMAL");
