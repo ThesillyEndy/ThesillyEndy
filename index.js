@@ -1,16 +1,36 @@
 import makeWASocket, { DisconnectReason } from "@whiskeysockets/baileys";
 import pino from "pino";
+import readline from "readline";
 import { useSQLiteAuthState } from "./src/authState.js";
 import { resolverJid } from "./src/resolve.js";
 import { ejecutar } from "./src/dispatcher.js";
 import { limpiarSesiones } from "./src/sessions.js";
 
 const logger = pino({ level: "silent" });
+const usarPairingCode = process.argv.includes("--pairing");
+
+function preguntar(texto) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => rl.question(texto, (respuesta) => {
+    rl.close();
+    resolve(respuesta.trim());
+  }));
+}
 
 async function iniciar() {
   const { state, saveCreds } = useSQLiteAuthState();
 
-  const sock = makeWASocket({ auth: state, logger, printQRInTerminal: true });
+  const sock = makeWASocket({
+    auth: state,
+    logger,
+    printQRInTerminal: !usarPairingCode,
+  });
+
+  if (usarPairingCode && !sock.authState.creds.registered) {
+    const numero = await preguntar("Escribe tu número con código de país (ej. 573135180876): ");
+    const codigo = await sock.requestPairingCode(numero);
+    console.log(`Tu código de vinculación es: ${codigo}`);
+  }
 
   sock.ev.on("creds.update", saveCreds);
 
