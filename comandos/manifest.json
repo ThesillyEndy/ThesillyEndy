@@ -1,0 +1,5 @@
+{
+  "ping": { "archivo": "ping.js" },
+  "update": { "archivo": "update.js", "soloOwner": true },
+  "help": { "archivo": "help.js" }
+}
