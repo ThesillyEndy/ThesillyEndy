@@ -17,5 +17,6 @@ export function establecerPrefijo(jid, prefijo) {
 }
 
 export function esOwner(jid) {
-  return OWNERS.includes(jid);
+  const numero = jid.split("@")[0]; // le quita el "@s.whatsapp.net" al jid que llega
+  return OWNERS.includes(numero);
 }
