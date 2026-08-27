@@ -39,11 +39,24 @@ function preguntar(texto) {
   );
 }
 
+async function obtenerVersion() {
+  try {
+    const resultado = await Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+    ]);
+    return resultado.version;
+  } catch {
+    logger.warn("No se pudo obtener la versión más reciente de Baileys, usando la por defecto.");
+    return undefined;
+  }
+}
+
 async function iniciar() {
   await printBanner();
 
   const { state, saveCreds } = useSQLiteAuthState();
-  const { version } = await fetchLatestBaileysVersion();
+  const version = await obtenerVersion();
 
   const yaVinculado = state.creds.registered;
 
@@ -51,7 +64,7 @@ async function iniciar() {
     auth: state,
     logger: logBaileys,
     printQRInTerminal: false,
-    version,
+    ...(version ? { version } : {}),
     browser: ["Ubuntu", "Chrome", "20.0.04"],
     keepAliveIntervalMs: 55000,
     maxIdleTimeMs: 60000,
