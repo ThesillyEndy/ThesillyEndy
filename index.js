@@ -10,6 +10,9 @@ import { resolverJid } from "./src/resolve.js";
 import { ejecutar } from "./src/dispatcher.js";
 import { limpiarSesiones } from "./src/sessions.js";
 
+process.on("uncaughtException", (err) => logger.error(`Excepción no capturada: ${err.message}`));
+process.on("unhandledRejection", (reason) => logger.error(`Rechazo no manejado: ${reason}`));
+
 const figletAsync = promisify(figlet);
 const logBaileys = logger.child({ modulo: "baileys" });
 logBaileys.level = "warn";
@@ -42,13 +45,12 @@ async function iniciar() {
   const { state, saveCreds } = useSQLiteAuthState();
   const { version } = await fetchLatestBaileysVersion();
 
-  // Si ya hay sesión guardada, no hace falta ni QR ni pairing code.
   const yaVinculado = state.creds.registered;
 
   const sock = makeWASocket({
     auth: state,
     logger: logBaileys,
-    printQRInTerminal: false, // ya no usamos QR, todo por número
+    printQRInTerminal: false,
     version,
     browser: ["Ubuntu", "Chrome", "20.0.04"],
     keepAliveIntervalMs: 55000,
@@ -60,12 +62,18 @@ async function iniciar() {
       chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
     );
 
-    // Espera para que el socket termine de conectar antes de pedir el código
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
-    logger.info(`Tu código de vinculación es: ${codigo}`);
-    logger.info("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo.");
+    try {
+      const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
+      logger.info(`Tu código de vinculación es: ${codigo}`);
+      logger.info("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo.");
+    } catch (e) {
+      logger.error(`No se pudo generar el código de vinculación: ${e.message}`);
+      logger.warn("Reintentando en 5 segundos...");
+      setTimeout(() => iniciar(), 5000);
+      return;
+    }
   }
 
   sock.ev.on("creds.update", saveCreds);
