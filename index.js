@@ -1,22 +1,29 @@
 import makeWASocket, { DisconnectReason } from "@whiskeysockets/baileys";
 import readline from "readline";
-import figlet from "figlet";
+import chalk from "chalk";
 import gradient from "gradient-string";
+import figlet from "figlet";
+import { promisify } from "util";
 import logger from "./src/logger.js";
 import { useSQLiteAuthState } from "./src/authState.js";
 import { resolverJid } from "./src/resolve.js";
 import { ejecutar } from "./src/dispatcher.js";
 import { limpiarSesiones } from "./src/sessions.js";
 
+const figletAsync = promisify(figlet);
 const logBaileys = logger.child({ modulo: "baileys" });
 logBaileys.level = "warn";
 
-function mostrarBanner() {
-  const texto = figlet.textSync("STEVE", { font: "Standard" });
-  console.log(gradient(["#00e5ff", "#7c4dff"]).multiline(texto));
-  console.log("⚡ Steve Bot ⚡");
-  console.log("✦ Minecraft Edition ✦");
-  console.log("─".repeat(40));
+const steveGradient = gradient(["#43A047", "#8D6E63", "#5D4037"]);
+const separator = chalk.hex("#8D6E63")("─".repeat(55));
+
+async function printBanner() {
+  const art = await figletAsync("STEVE", { font: "ANSI Shadow" });
+  console.clear();
+  console.log("\n" + steveGradient(art));
+  console.log(chalk.hex("#43A047").bold("        ⛏  Steve Bot  ⛏"));
+  console.log(chalk.hex("#8D6E63")("        ✦  Minecraft Edition  ✦"));
+  console.log(separator + "\n");
 }
 
 function preguntar(texto) {
@@ -30,7 +37,7 @@ function preguntar(texto) {
 }
 
 async function iniciar() {
-  mostrarBanner();
+  await printBanner();
 
   const { state, saveCreds } = useSQLiteAuthState();
 
@@ -45,7 +52,7 @@ async function iniciar() {
 
   if (!yaVinculado) {
     const numero = await preguntar(
-      "\x1b[36mNo hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): \x1b[0m"
+      chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
     );
     const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
     logger.info(`Tu código de vinculación es: ${codigo}`);
