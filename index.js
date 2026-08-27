@@ -54,6 +54,10 @@ async function iniciar() {
     const numero = await preguntar(
       chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
     );
+
+    // Espera para que el socket termine de conectar antes de pedir el código
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
     const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
     logger.info(`Tu código de vinculación es: ${codigo}`);
     logger.info("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo.");
