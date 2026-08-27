@@ -47,7 +47,7 @@ async function obtenerVersion() {
     ]);
     return resultado.version;
   } catch {
-    logger.warn("No se pudo obtener la versión más reciente de Baileys, usando la por defecto.");
+    console.log(chalk.yellow("⚠ No se pudo obtener la versión más reciente de Baileys, usando la por defecto."));
     return undefined;
   }
 }
@@ -79,11 +79,11 @@ async function iniciar() {
 
     try {
       const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
-      logger.info(`Tu código de vinculación es: ${codigo}`);
-      logger.info("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo.");
+      console.log(chalk.greenBright(`✅ Tu código de vinculación es: ${chalk.bold(codigo)}`));
+      console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
     } catch (e) {
-      logger.error(`No se pudo generar el código de vinculación: ${e.message}`);
-      logger.warn("Reintentando en 5 segundos...");
+      console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
+      console.log(chalk.yellow("Reintentando en 5 segundos..."));
       setTimeout(() => iniciar(), 5000);
       return;
     }
@@ -93,11 +93,11 @@ async function iniciar() {
 
   sock.ev.on("connection.update", (update) => {
     const { connection, lastDisconnect } = update;
-    if (connection === "open") logger.info("Conectado a WhatsApp ✅");
+    if (connection === "open") console.log(chalk.greenBright("✅ Conectado a WhatsApp"));
     if (connection === "close") {
       const debeReconectar =
         lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-      logger.warn(`Conexión cerrada. Reconectar: ${debeReconectar}`);
+      console.log(chalk.yellow(`⚠ Conexión cerrada. Reconectar: ${debeReconectar}`));
       if (debeReconectar) iniciar();
     }
   });
@@ -111,7 +111,7 @@ async function iniciar() {
     const texto =
       msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
-    logger.info({ de: senderJid, chat: jid }, `Mensaje: ${texto}`);
+    console.log(chalk.cyan(`💬 ${senderJid} → ${texto || chalk.gray("(sin texto)")}`));
     await ejecutar({ sock, msg, jid, senderJid, texto });
   });
 }
