@@ -1,5 +1,7 @@
 import makeWASocket, { DisconnectReason } from "@whiskeysockets/baileys";
 import readline from "readline";
+import figlet from "figlet";
+import gradient from "gradient-string";
 import logger from "./src/logger.js";
 import { useSQLiteAuthState } from "./src/authState.js";
 import { resolverJid } from "./src/resolve.js";
@@ -8,6 +10,14 @@ import { limpiarSesiones } from "./src/sessions.js";
 
 const logBaileys = logger.child({ modulo: "baileys" });
 logBaileys.level = "warn";
+
+function mostrarBanner() {
+  const texto = figlet.textSync("STEVE", { font: "Standard" });
+  console.log(gradient(["#00e5ff", "#7c4dff"]).multiline(texto));
+  console.log("⚡ Steve Bot ⚡");
+  console.log("✦ Minecraft Edition ✦");
+  console.log("─".repeat(40));
+}
 
 function preguntar(texto) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -20,6 +30,8 @@ function preguntar(texto) {
 }
 
 async function iniciar() {
+  mostrarBanner();
+
   const { state, saveCreds } = useSQLiteAuthState();
 
   // Si ya hay sesión guardada, no hace falta ni QR ni pairing code.
@@ -32,7 +44,6 @@ async function iniciar() {
   });
 
   if (!yaVinculado) {
-    console.clear();
     const numero = await preguntar(
       "\x1b[36mNo hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): \x1b[0m"
     );
