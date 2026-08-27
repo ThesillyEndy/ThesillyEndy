@@ -1,4 +1,4 @@
-import makeWASocket, { DisconnectReason } from "@whiskeysockets/baileys";
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
 import readline from "readline";
 import chalk from "chalk";
 import gradient from "gradient-string";
@@ -40,6 +40,7 @@ async function iniciar() {
   await printBanner();
 
   const { state, saveCreds } = useSQLiteAuthState();
+  const { version } = await fetchLatestBaileysVersion();
 
   // Si ya hay sesión guardada, no hace falta ni QR ni pairing code.
   const yaVinculado = state.creds.registered;
@@ -48,6 +49,10 @@ async function iniciar() {
     auth: state,
     logger: logBaileys,
     printQRInTerminal: false, // ya no usamos QR, todo por número
+    version,
+    browser: ["Ubuntu", "Chrome", "20.0.04"],
+    keepAliveIntervalMs: 55000,
+    maxIdleTimeMs: 60000,
   });
 
   if (!yaVinculado) {
