@@ -96,8 +96,9 @@ async function iniciar() {
       console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
     } catch (e) {
       console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
-      console.log(chalk.yellow("Reintentando en 5 segundos..."));
-      setTimeout(() => iniciar(), 5000);
+      console.log(chalk.yellow("Reintentando en 15 segundos..."));
+      try { sock.ws.close(); } catch {}
+      setTimeout(() => iniciar(), 15000);
       return;
     }
   }
