@@ -19,6 +19,14 @@ logBaileys.level = "warn";
 const soraGradient = gradient(["#B0B0B0", "#6A0DAD", "#1A1A1A"]);
 const separator = chalk.hex("#5A189A")("─".repeat(55));
 
+// interfaz de readline única, creada una sola vez para todo el proceso
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+function preguntar(texto) {
+  return new Promise((resolve) =>
+    rl.question(texto, (respuesta) => resolve(respuesta.trim()))
+  );
+}
+
 function formatearMensaje({ jid, senderJid, texto }) {
   const hora = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const esGrupo = jid.endsWith("@g.us");
@@ -37,22 +45,11 @@ function formatearMensaje({ jid, senderJid, texto }) {
 }
 
 async function printBanner() {
-  const art = await figletAsync("SORA", { font: "ANSI Shadow" });
-  console.clear();
+  const art = await figletAsync("SORA", { font: "Standard" });
   console.log("\n" + soraGradient(art));
   console.log(chalk.hex("#B0B0B0").bold("        ✦  Sora Bot  ✦"));
   console.log(chalk.hex("#6A0DAD")("        ⟠  Alternative Edition  ⟠"));
   console.log(separator + "\n");
-}
-
-function preguntar(texto) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) =>
-    rl.question(texto, (respuesta) => {
-      rl.close();
-      resolve(respuesta.trim());
-    })
-  );
 }
 
 async function obtenerVersion() {
