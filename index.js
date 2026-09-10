@@ -88,7 +88,8 @@ async function iniciar() {
       chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    console.log(chalk.gray("Preparando conexión..."));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     try {
       const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
