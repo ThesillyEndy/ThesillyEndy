@@ -6,9 +6,8 @@ import figlet from "figlet";
 import { promisify } from "util";
 import logger from "./src/logger.js";
 import { useSQLiteAuthState } from "./src/authState.js";
-import { resolverJid } from "./src/resolve.js";
+import { resolverJid, limpiarSesiones } from "./src/estado.js";
 import { ejecutar } from "./src/dispatcher.js";
-import { limpiarSesiones } from "./src/sessions.js";
 
 process.on("uncaughtException", (err) => logger.error(`Excepción no capturada: ${err.message}`));
 process.on("unhandledRejection", (reason) => logger.error(`Rechazo no manejado: ${reason}`));
