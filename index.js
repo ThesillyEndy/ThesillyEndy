@@ -16,15 +16,32 @@ const figletAsync = promisify(figlet);
 const logBaileys = logger.child({ modulo: "baileys" });
 logBaileys.level = "warn";
 
-const steveGradient = gradient(["#43A047", "#8D6E63", "#5D4037"]);
-const separator = chalk.hex("#8D6E63")("─".repeat(55));
+const soraGradient = gradient(["#B0B0B0", "#6A0DAD", "#1A1A1A"]);
+const separator = chalk.hex("#5A189A")("─".repeat(55));
+
+function formatearMensaje({ jid, senderJid, texto }) {
+  const hora = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const esGrupo = jid.endsWith("@g.us");
+
+  const icono = esGrupo ? "⟠" : "⟡";
+  const tipo = esGrupo
+    ? chalk.hex("#9D4EDD").bold("GRUPO")
+    : chalk.hex("#C9184A").bold("PRIVADO");
+
+  const remitente = chalk.hex("#E0AAFF").bold(senderJid.split("@")[0]);
+  const contenido = texto
+    ? chalk.whiteBright(texto.length > 80 ? texto.slice(0, 80) + "…" : texto)
+    : chalk.gray.italic("multimedia / sin texto");
+
+  return `${chalk.gray(`[${hora}]`)} ${chalk.hex("#5A189A")(icono)} ${tipo}  ${remitente} ${chalk.hex("#5A189A")("»")} ${contenido}`;
+}
 
 async function printBanner() {
-  const art = await figletAsync("STEVE", { font: "ANSI Shadow" });
+  const art = await figletAsync("SORA", { font: "ANSI Shadow" });
   console.clear();
-  console.log("\n" + steveGradient(art));
-  console.log(chalk.hex("#43A047").bold("        ⛏  Steve Bot  ⛏"));
-  console.log(chalk.hex("#8D6E63")("        ✦  Minecraft Edition  ✦"));
+  console.log("\n" + soraGradient(art));
+  console.log(chalk.hex("#B0B0B0").bold("        ✦  Sora Bot  ✦"));
+  console.log(chalk.hex("#6A0DAD")("        ⟠  Alternative Edition  ⟠"));
   console.log(separator + "\n");
 }
 
@@ -110,7 +127,7 @@ async function iniciar() {
     const texto =
       msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
-    console.log(chalk.cyan(`💬 ${senderJid} → ${texto || chalk.gray("(sin texto)")}`));
+    console.log(formatearMensaje({ jid, senderJid, texto }));
     await ejecutar({ sock, msg, jid, senderJid, texto });
   });
 }
