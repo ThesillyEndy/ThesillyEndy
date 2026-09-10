@@ -1,9 +1,10 @@
-import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion } from "@whiskeysockets/baileys";
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, Browsers, makeCacheableSignalKeyStore } from "@whiskeysockets/baileys";
 import readline from "readline";
 import chalk from "chalk";
 import gradient from "gradient-string";
 import figlet from "figlet";
 import { promisify } from "util";
+import NodeCache from "node-cache";
 import logger from "./src/logger.js";
 import { useSQLiteAuthState } from "./src/authState.js";
 import { resolverJid, limpiarSesiones } from "./src/estado.js";
@@ -19,7 +20,6 @@ logBaileys.level = "warn";
 const soraGradient = gradient(["#B0B0B0", "#6A0DAD", "#1A1A1A"]);
 const separator = chalk.hex("#5A189A")("─".repeat(55));
 
-// interfaz de readline única, creada una sola vez para todo el proceso
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 function preguntar(texto) {
   return new Promise((resolve) =>
@@ -68,40 +68,52 @@ async function obtenerVersion() {
 async function iniciar() {
   await printBanner();
 
-  const { state, saveCreds } = useSQLiteAuthState();
+  const { state, saveCreds } = await useSQLiteAuthState();
   const version = await obtenerVersion();
 
-  const yaVinculado = state.creds.registered;
-
-  const sock = makeWASocket({
-    auth: state,
-    logger: logBaileys,
-    printQRInTerminal: false,
-    ...(version ? { version } : {}),
-    browser: ["Ubuntu", "Chrome", "20.0.04"],
-    keepAliveIntervalMs: 55000,
-    maxIdleTimeMs: 60000,
-  });
-
-  if (!yaVinculado) {
-    const numero = await preguntar(
+  let numero = null;
+  if (!state.creds.registered) {
+    numero = await preguntar(
       chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
     );
+  }
 
+  const msgRetryCounterCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
+
+  const sock = makeWASocket({
+    version,
+    logger: logBaileys,
+    browser: Browsers.macOS("Chrome"),
+    printQRInTerminal: false,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, logBaileys),
+    },
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
+    shouldSyncHistoryMessage: () => false,
+    fireInitQueries: false,
+    generateHighQualityLinkPreview: false,
+    shouldIgnoreJid: (jid) => jid.endsWith("@broadcast"),
+    keepAliveIntervalMs: 30000,
+    connectTimeoutMs: 20000,
+    transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
+    emitOwnEvents: false,
+    msgRetryCounterCache,
+  });
+
+  if (!state.creds.registered && numero) {
     console.log(chalk.gray("Preparando conexión..."));
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-
-    try {
-      const codigo = await sock.requestPairingCode(numero.replace(/[^0-9]/g, ""));
-      console.log(chalk.greenBright(`✅ Tu código de vinculación es: ${chalk.bold(codigo)}`));
-      console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
-    } catch (e) {
-      console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
-      console.log(chalk.yellow("Reintentando en 15 segundos..."));
-      try { sock.ws.close(); } catch {}
-      setTimeout(() => iniciar(), 15000);
-      return;
-    }
+    setTimeout(async () => {
+      try {
+        const cleanNumber = numero.replace(/[^0-9]/g, "");
+        const codigo = await sock.requestPairingCode(cleanNumber);
+        console.log(chalk.greenBright(`✅ Tu código de vinculación es: ${chalk.bold(codigo)}`));
+        console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
+      } catch (e) {
+        console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
+      }
+    }, 3000);
   }
 
   sock.ev.on("creds.update", saveCreds);
