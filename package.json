@@ -1,7 +1,7 @@
 {
-  "name": "steve-bot",
+  "name": "sora-bot",
   "version": "1.0.0",
-  "description": "Steve (Minecraft) WhatsApp Bot",
+  "description": "Sora WhatsApp Bot",
   "main": "index.js",
   "type": "module",
   "scripts": {
