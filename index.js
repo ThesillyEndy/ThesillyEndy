@@ -1,4 +1,9 @@
-import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, Browsers, makeCacheableSignalKeyStore } from "@whiskeysockets/baileys";
+import makeWASocket, {
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  Browsers,
+} from "@whiskeysockets/baileys";
 import readline from "readline";
 import chalk from "chalk";
 import gradient from "gradient-string";
@@ -17,6 +22,9 @@ const figletAsync = promisify(figlet);
 const logBaileys = logger.child({ modulo: "baileys" });
 logBaileys.level = "warn";
 
+console.info = () => {};
+console.debug = () => {};
+
 const soraGradient = gradient(["#B0B0B0", "#6A0DAD", "#1A1A1A"]);
 const separator = chalk.hex("#5A189A")("─".repeat(55));
 
@@ -26,6 +34,10 @@ function preguntar(texto) {
     rl.question(texto, (respuesta) => resolve(respuesta.trim()))
   );
 }
+
+let sockActivo = null;
+let reiniciando = false;
+let numeroPendiente = null;
 
 function formatearMensaje({ jid, senderJid, texto }) {
   const hora = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -66,22 +78,33 @@ async function obtenerVersion() {
 }
 
 async function iniciar() {
+  if (reiniciando) return;
+  reiniciando = true;
+
   await printBanner();
 
-  const { state, saveCreds } = await useSQLiteAuthState();
+  const { state, saveCreds: guardarCreds } = useSQLiteAuthState();
   const version = await obtenerVersion();
+  const yaVinculado = state.creds.registered;
 
-  let numero = null;
-  if (!state.creds.registered) {
-    numero = await preguntar(
-      chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
-    );
+  if (sockActivo) {
+    try { sockActivo.ev.removeAllListeners(); } catch {}
+    try { sockActivo.end(); } catch {}
+    sockActivo = null;
   }
 
   const msgRetryCounterCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
 
+  let saveCredsTimer = null;
+  const saveCreds = () => {
+    clearTimeout(saveCredsTimer);
+    saveCredsTimer = setTimeout(() => {
+      try { guardarCreds(); } catch (e) { logger.error(`Error al guardar la sesión: ${e.message}`); }
+    }, 2000);
+  };
+
   const sock = makeWASocket({
-    version,
+    ...(version ? { version } : {}),
     logger: logBaileys,
     browser: Browsers.macOS("Chrome"),
     printQRInTerminal: false,
@@ -102,30 +125,39 @@ async function iniciar() {
     msgRetryCounterCache,
   });
 
-  if (!state.creds.registered && numero) {
-    console.log(chalk.gray("Preparando conexión..."));
-    setTimeout(async () => {
-      try {
-        const cleanNumber = numero.replace(/[^0-9]/g, "");
-        const codigo = await sock.requestPairingCode(cleanNumber);
-        console.log(chalk.greenBright(`✅ Tu código de vinculación es: ${chalk.bold(codigo)}`));
-        console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
-      } catch (e) {
-        console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
-      }
-    }, 3000);
-  }
+  sockActivo = sock;
 
   sock.ev.on("creds.update", saveCreds);
 
+  let qrRecibido = false;
+
   sock.ev.on("connection.update", (update) => {
-    const { connection, lastDisconnect } = update;
-    if (connection === "open") console.log(chalk.greenBright("✅ Conectado a WhatsApp"));
+    const { connection, lastDisconnect, qr } = update;
+    if (qr) qrRecibido = true;
+
+    if (connection === "open") {
+      reiniciando = false;
+      numeroPendiente = null;
+      console.log(chalk.greenBright("✅ Conectado a WhatsApp"));
+    }
+
     if (connection === "close") {
       const debeReconectar =
         lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+
       console.log(chalk.yellow(`⚠ Conexión cerrada. Reconectar: ${debeReconectar}`));
-      if (debeReconectar) iniciar();
+
+      clearTimeout(saveCredsTimer);
+      try { guardarCreds(); } catch {}
+
+      if (debeReconectar) {
+        reiniciando = false;
+        setTimeout(() => iniciar(), 3000);
+      } else {
+        reiniciando = false;
+        numeroPendiente = null;
+        console.log(chalk.red("✘ La sesión fue cerrada desde el teléfono. Elimina la sesión guardada y vuelve a vincular."));
+      }
     }
   });
 
@@ -141,6 +173,55 @@ async function iniciar() {
     console.log(formatearMensaje({ jid, senderJid, texto }));
     await ejecutar({ sock, msg, jid, senderJid, texto });
   });
+
+  if (!yaVinculado) {
+    let numero = numeroPendiente;
+
+    if (!numero) {
+      const respuesta = await preguntar(
+        chalk.cyan("No hay sesión activa. Escribe tu número con código de país (ej. 5215512345678): ")
+      );
+      numero = respuesta.replace(/[^0-9]/g, "");
+      numeroPendiente = numero;
+    }
+
+    if (sockActivo !== sock) return;
+
+    console.log(chalk.gray("Preparando conexión..."));
+
+    if (!qrRecibido) {
+      await new Promise((resolve) => {
+        const alRecibirQR = (u) => {
+          if (u.qr) {
+            sock.ev.off("connection.update", alRecibirQR);
+            resolve();
+          }
+        };
+        sock.ev.on("connection.update", alRecibirQR);
+        setTimeout(() => {
+          sock.ev.off("connection.update", alRecibirQR);
+          resolve();
+        }, 30000);
+      });
+    }
+
+    if (sockActivo !== sock) return;
+
+    try {
+      const codigo = await sock.requestPairingCode(numero);
+      if (sockActivo !== sock) return;
+      console.log(chalk.greenBright(`✅ Tu código de vinculación es: ${chalk.bold(codigo)}`));
+      console.log(chalk.gray("Ve a WhatsApp > Dispositivos vinculados > Vincular con número y ponlo."));
+    } catch (e) {
+      if (sockActivo !== sock) return;
+      console.log(chalk.red(`✘ No se pudo generar el código de vinculación: ${e.message}`));
+      console.log(chalk.yellow("Reintentando en 15 segundos..."));
+      try { sock.ev.removeAllListeners(); } catch {}
+      try { sock.end(); } catch {}
+      reiniciando = false;
+      setTimeout(() => iniciar(), 15000);
+    }
+  }
 }
 
 setInterval(limpiarSesiones, 60_000);
