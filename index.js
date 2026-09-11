@@ -1,8 +1,8 @@
 import makeWASocket, {
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  Browsers,
+ DisconnectReason,
+ fetchLatestBaileysVersion,
+ makeCacheableSignalKeyStore,
+ Browsers,
 } from "@whiskeysockets/baileys";
 import readline from "readline";
 import chalk from "chalk";
