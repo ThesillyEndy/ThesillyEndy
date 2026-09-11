@@ -114,7 +114,6 @@ async function iniciar() {
     },
     markOnlineOnConnect: false,
     syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false,
     fireInitQueries: false,
     generateHighQualityLinkPreview: false,
     shouldIgnoreJid: (jid) => jid.endsWith("@broadcast"),
