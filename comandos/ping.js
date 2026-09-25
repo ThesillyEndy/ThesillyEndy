@@ -8,7 +8,7 @@ export async function ejecutar({ sock, msg, jid }) {
   const ms = Date.now() - inicio;
 
   await sock.sendMessage(jid, {
-    text: `⟡ Pong! ${ms}ms`,
+    text: `🍭ᩧ̥ ۪ ׁ 𝗽𝗼𝗻𝗴! ${ms}ms ᭄᭡`,
     edit: enviado.key,
   });
 }
