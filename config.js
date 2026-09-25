@@ -1,5 +1,5 @@
 export const OWNERS = [
-  "573135180876",
+  "19053685425",
 ];
 
 export const PREFIJO_POR_DEFECTO = "/";
