@@ -13,7 +13,15 @@ export async function ejecutar({ sock, jid, senderJid }) {
     .filter(([, datos]) => !datos.soloOwner || esOwner(senderJid))
     .map(([nombre]) => nombre);
 
-  await sock.sendMessage(jid, {
-    text: `Comandos disponibles:\n${visibles.map((c) => `- ${c}`).join("\n")}`,
-  });
+  const numeroUser = senderJid.split("@")[0];
+
+  const encabezado =
+`︵ִ︵ִㅤ݂ㅤׄ𓃉ㅤ̥ᐢ𓍢ׄㅤ۪⏝݂︶݂︶ׄ𓈒
+ ︧ ︨֟፝ ᪰ ₎ᩚ᳣  𝗯𝗼𝘁: Sora
+ ︧ ︨֟፝ ᪰ ₎ᩚ᳣  𝘂𝘀𝗲𝗿: @${numeroUser}
+⏝ ۪ 〫 ࡛ ׁ ︶ ۪ 〪⎗࣭ ๋🌿ᩧ̥ ۪ ׁ 𑰻 〪 ࣭ ۫︶݂⏝`;
+
+  const texto = `${encabezado}\n\nComandos disponibles:\n${visibles.map((c) => `- ${c}`).join("\n")}`;
+
+  await sock.sendMessage(jid, { text: texto, mentions: [senderJid] });
 }
